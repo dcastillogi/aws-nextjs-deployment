@@ -18,7 +18,11 @@ Follow the steps below to deploy the application successfully:
 
 ### 1. Configure Dockerfile and .dockerignore
 
-Copy `Dockerfile` and `.dockerignore` file inside the root directory of the Next.js project.
+Copy the `Dockerfile` and `.dockerignore` files to the root directory of your Next.js project. 
+
+This Docker image relies on the Next.js output configuration set to `standalone`. Make sure to configure it properly.  
+
+For more details, refer to the [Next.js documentation on output configuration](https://nextjs.org/docs/pages/api-reference/next-config-js/output).
 
 ### 2. Copy CDK
 
