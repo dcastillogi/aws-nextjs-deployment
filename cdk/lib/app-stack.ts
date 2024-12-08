@@ -78,11 +78,15 @@ export class AppStack extends cdk.Stack {
                     subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
                 },
                 writer: rds.ClusterInstance.serverlessV2("main"),
-                // readers: [
-                //     rds.ClusterInstance.serverlessV2("replica", {
-                //         scaleWithWriter: true,
-                //     }),
-                // ],
+                readers: [
+                    ...(process.env.AURORA_READER_REPLICA
+                        ? [
+                              rds.ClusterInstance.serverlessV2("replica", {
+                                  scaleWithWriter: true,
+                              }),
+                          ]
+                        : []),
+                ],
                 removalPolicy: cdk.RemovalPolicy.RETAIN,
                 storageEncrypted: true,
                 backup: {
