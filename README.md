@@ -2,6 +2,8 @@
 
 ## Architecture
 
+![Cloud Architecture](architecture.drawio.png)
+
 ## Deployment Guide
 
 Follow the steps below to deploy the application successfully:
