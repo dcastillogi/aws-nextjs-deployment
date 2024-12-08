@@ -1,4 +1,4 @@
-# Next.js GitHub Actions CDK
+# Next.js CI/CD Github Actions + AWS
 
 ## Architecture
 
