@@ -1,4 +1,12 @@
-# Next.js CI/CD Github Actions + AWS
+Are you looking to deploy your Next.js project on AWS with high availability? This repository has everything you need:  
+
+- **AWS CDK**: Automates infrastructure deployment, including:  
+  - High-availability configuration for your Next.js deployment.  
+  - An **S3 bucket** for file uploads.  
+  - A **PostgreSQL** database.  
+- **GitHub Actions**: Preconfigured for seamless CI/CD, enabling continuous integration and deployment.  
+
+Simplify your deployment workflow and leverage the power of AWS and GitHub Actions to take your project to production effortlessly.  
 
 ## Architecture
 
