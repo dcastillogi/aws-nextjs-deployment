@@ -1,6 +1,16 @@
-# Next.js GitHub Actions CDK
+Are you looking to deploy your Next.js project on AWS with high availability? This repository has everything you need:  
+
+- **AWS CDK**: Automates infrastructure deployment, including:  
+  - High-availability configuration for your Next.js deployment.  
+  - An **S3 bucket** for file uploads.  
+  - A **PostgreSQL** database.  
+- **GitHub Actions**: Preconfigured for seamless CI/CD, enabling continuous integration and deployment.  
+
+Simplify your deployment workflow and leverage the power of AWS and GitHub Actions to take your project to production effortlessly.  
 
 ## Architecture
+
+![Cloud Architecture](architecture.drawio.png)
 
 ## Deployment Guide
 
@@ -8,7 +18,11 @@ Follow the steps below to deploy the application successfully:
 
 ### 1. Configure Dockerfile and .dockerignore
 
-Copy `Dockerfile` and `.dockerignore` file inside the root directory of the Next.js project.
+Copy the `Dockerfile` and `.dockerignore` files to the root directory of your Next.js project. 
+
+This Docker image relies on the Next.js output configuration set to `standalone`. Make sure to configure it properly.  
+
+For more details, refer to the [Next.js documentation on output configuration](https://nextjs.org/docs/pages/api-reference/next-config-js/output).
 
 ### 2. Copy CDK
 
