@@ -43,7 +43,7 @@ export class AppStack extends cdk.Stack {
                 {
                     cidrMask: 24,
                     name: "private",
-                    subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+                    subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
                 },
             ],
         });
@@ -269,9 +269,10 @@ export class AppStack extends cdk.Stack {
                 cluster,
                 taskDefinition,
                 desiredCount: 1,
-                assignPublicIp: true,
+                assignPublicIp: false,
                 circuitBreaker: { rollback: true },
                 securityGroups: [serviceSecurityGroup],
+                vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
                 healthCheckGracePeriod: Duration.seconds(120),
             }
         );
