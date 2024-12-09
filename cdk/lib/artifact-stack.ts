@@ -2,6 +2,7 @@ import * as cdk from "aws-cdk-lib";
 import * as ecr from "aws-cdk-lib/aws-ecr";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as s3 from "aws-cdk-lib/aws-s3";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 
 export class ArtifactStack extends cdk.Stack {
@@ -42,6 +43,19 @@ export class ArtifactStack extends cdk.Stack {
                 },
             })
         );
+
+        // Create app secret
+        const secret = new secretsmanager.Secret(this, "AppSecret", {
+            secretName: process.env.SECRET_NAME!,
+            generateSecretString: {
+                secretStringTemplate: JSON.stringify({
+                    username: "appuser",
+                }),
+                excludePunctuation: true,
+                generateStringKey: "password",
+            },
+            removalPolicy: cdk.RemovalPolicy.RETAIN,
+        });
 
         // Create user for GitHub Actions
         const githubActionsUser = new iam.User(
@@ -118,6 +132,10 @@ export class ArtifactStack extends cdk.Stack {
 
         new cdk.CfnOutput(this, "GitHubActionsUserSecretAccessKey", {
             value: accessKey.attrSecretAccessKey,
+        });
+
+        new cdk.CfnOutput(this, "SecretManagerARN", {
+            value: secret.secretArn,
         });
     }
 }

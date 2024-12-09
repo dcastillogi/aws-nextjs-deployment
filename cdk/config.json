@@ -1,0 +1,4 @@
+{
+    "environmentVariables": {},
+    "secrets": ["username", "password"]
+}

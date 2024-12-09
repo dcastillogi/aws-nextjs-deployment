@@ -8,5 +8,9 @@ import { ArtifactStack } from '../lib/artifact-stack';
 dotenv.config({ path: process.cwd() + '/.env' });
 
 const app = new cdk.App();
-new AppStack(app, 'AppStack');
+const config = require('../config.json');
+
+new AppStack(app, 'AppStack', {
+    config: config
+});
 new ArtifactStack(app, 'ArtifactStack');

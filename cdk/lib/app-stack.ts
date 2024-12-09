@@ -11,11 +11,19 @@ import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as wafv2 from "aws-cdk-lib/aws-wafv2";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 import { Duration } from "aws-cdk-lib";
 
+interface AppStackProps extends cdk.StackProps {
+    readonly config: {
+        readonly environmentVariables: { [key: string]: string };
+        readonly secrets: string[];
+    };
+}
+
 export class AppStack extends cdk.Stack {
-    constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+    constructor(scope: Construct, id: string, props?: AppStackProps) {
         super(scope, id, props);
 
         const domainCert = certificatemanager.Certificate.fromCertificateArn(
@@ -63,6 +71,13 @@ export class AppStack extends cdk.Stack {
             bucketName: process.env.UPLOAD_BUCKET_NAME!,
         });
 
+        // Secret Manager App Secrets
+        const secret = secretsmanager.Secret.fromSecretNameV2(
+            this,
+            "AppSecret",
+            process.env.SECRET_NAME!
+        );
+
         // Aurora Serverless Cluster
         const auroraCluster = new rds.DatabaseCluster(
             this,
@@ -93,7 +108,7 @@ export class AppStack extends cdk.Stack {
                     retention: Duration.days(15),
                     preferredWindow: "06:00-07:00",
                 },
-                credentials: rds.Credentials.fromGeneratedSecret("postgres"),
+                credentials: rds.Credentials.fromSecret(secret),
             }
         );
 
@@ -121,6 +136,22 @@ export class AppStack extends cdk.Stack {
             }
         );
 
+        /* ====  GET ENVIROMENT VARIABLES ==== */
+
+        // Get environment variables
+
+        // Create environment variables
+        const envVars: { [key: string]: string } = {
+            ...props?.config?.environmentVariables,
+            PORT: "3000",
+        };
+
+        // Get environment variable keys
+        const envKeys = Object.keys(envVars);
+
+        // Get secret keys from configuration
+        const secrets = props?.config?.secrets || [];
+
         // Add container to task definition
         taskDefinition.addContainer("AppContainer", {
             image: ecs.ContainerImage.fromEcrRepository(repository),
@@ -136,23 +167,19 @@ export class AppStack extends cdk.Stack {
                 streamPrefix: "app-container",
                 logRetention: logs.RetentionDays.ONE_WEEK,
             }),
-            environment: {
-                WRITER_ENDPOINT: auroraCluster.clusterEndpoint.hostname,
-                READER_ENDPOINT: auroraCluster.clusterReadEndpoint.hostname,
-                PORT: "3000",
-                DB_PORT: "5432",
-                DATABASE_NAME: process.env.DATABASE_NAME!,
-            },
-            secrets: {
-                DB_USERNAME: ecs.Secret.fromSecretsManager(
-                    auroraCluster.secret!,
-                    "username"
-                ),
-                DB_PASSWORD: ecs.Secret.fromSecretsManager(
-                    auroraCluster.secret!,
-                    "password"
-                ),
-            },
+            environment: envKeys.reduce(
+                (acc, key) => ({
+                    ...acc,
+                    [key]: envVars[key],
+                }),
+                {}
+            ),
+            secrets: secrets.reduce((acc, key) => {
+                return {
+                    ...acc,
+                    [key]: ecs.Secret.fromSecretsManager(secret, key),
+                };
+            }, {} as { [key: string]: ecs.Secret }),
             healthCheck: {
                 command: [
                     "CMD-SHELL",
@@ -387,6 +414,23 @@ export class AppStack extends cdk.Stack {
             new iam.PolicyStatement({
                 actions: ["ecs:UpdateService"],
                 resources: [fargateService.serviceArn],
+            })
+        );
+
+        githubActionsRole.addToPrincipalPolicy(
+            new iam.PolicyStatement({
+                actions: [
+                    "ecs:DescribeTaskDefinition",
+                    "ecs:RegisterTaskDefinition",
+                ],
+                resources: ["*"],
+            })
+        );
+
+        githubActionsRole.addToPrincipalPolicy(
+            new iam.PolicyStatement({
+                actions: ["iam:PassRole"],
+                resources: ["*"],
             })
         );
 

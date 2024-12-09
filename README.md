@@ -26,10 +26,13 @@ STATIC_BUCKET_NAME=""
 UPLOAD_BUCKET_NAME=""
 DOMAIN_NAME=""
 ECS_CLUSTER_NAME=""
-AURORA_READER_REPLICA=false
+AURORA_READER_REPLICA=false # default
 GITHUB_ACTIONS_USER_NAME="github-actions-deployment-user"
 GITHUB_ACTIONS_ROLE_NAME="github-actions-deployment-role"
+SECRET_NAME=""
 ```
+
+> The `CERTIFICATE_ARN` refers to the ARN of the ACM certificate for both the root domain and its `www` subdomain. Ensure this certificate has already been created in AWS Certificate Manager (ACM).
 
 ### 4. Deploy Artifact Stack
 
@@ -46,92 +49,17 @@ Use the output values from the artifact stack to configure the initial GitHub se
 ```bash
 AWS_ROLE_TO_ASSUME=""
 AWS_ACCESS_KEY_ID=""
-AWS_SECRET_ACCESS_KEY="
-AWS_REGION="
+AWS_SECRET_ACCESS_KEY=""
+AWS_REGION=""
 ECR_REPOSITORY=""
 S3_BUCKET_NAME=""
+SECRET_MANAGER_ARN=""
+TASK_DEFINITION=""
 ```
 
 ### 6. Configure GitHub Actions
 
-Create `build-deploy.yml` inside the `.github/workflows/` directory and define the following workflow:
-
-```yml
-name: Build and Push to AWS
-
-on:
-    push:
-        branches: [main]
-
-jobs:
-    build-and-push:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout repo
-              uses: actions/checkout@v3
-
-            - name: Configure AWS credentials
-              uses: aws-actions/configure-aws-credentials@v4
-              with:
-                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-                  role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-                  aws-region: ${{ secrets.AWS_REGION }}
-                  role-skip-session-tagging: true
-
-            - name: Login to Amazon ECR
-              id: login-ecr
-              uses: aws-actions/amazon-ecr-login@v2
-
-            - name: Build, tag, and push Docker image
-              env:
-                  ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-                  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-                  IMAGE_TAG: ${{ github.sha }}
-              run: |
-                  docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
-                  docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-                  docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-
-            - name: Upload to S3
-              env:
-                  BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
-              run: |
-                  aws s3 sync public/ s3://$BUCKET_NAME/ --delete
-
-    deploy:
-        needs: build-and-push
-        runs-on: ubuntu-latest
-        steps:
-            - name: Configure AWS credentials
-              uses: aws-actions/configure-aws-credentials@v4
-              with:
-                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-                  role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-                  aws-region: ${{ secrets.AWS_REGION }}
-                  role-skip-session-tagging: true
-
-            - name: Deploy to ECS
-              env:
-                  ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
-                  ECS_SERVICE: ${{ secrets.ECS_SERVICE }}
-                  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-                  IMAGE_TAG: ${{ github.sha }}
-              run: |
-                  aws ecs update-service \
-                    --cluster $ECS_CLUSTER \
-                    --service $ECS_SERVICE \
-                    --force-new-deployment
-
-            - name: Purge CloudFront Cache
-              env:
-                  DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
-              run: |
-                  aws cloudfront create-invalidation \
-                    --distribution-id $DISTRIBUTION_ID \
-                    --paths "/*"
-```
+Copy `build-deploy.yml` inside the `.github/workflows/` directory.
 
 Commit the changes and push to the main branch to trigger the GitHub Actions workflow.
 
@@ -141,7 +69,13 @@ Commit the changes and push to the main branch to trigger the GitHub Actions wor
 
 Proceed to deploy the application stack after the artifact stack is in place.
 
-> Inside the `app-stack.ts` file, you can update the `environment` property of the `TaskDefinition` construct to include the necessary environment variables for the application. Also, it is recommended to create secret environment variables using the AWS Secrets Manager and pass them to the task definition.
+> Inside the `config.json` file, you can update the `environmentVariables` section to include the necessary environment variables for the application in `{key: value}` format.  
+>
+> **Important:** These values are not encrypted. For sensitive information, use AWS Secrets Manager. All keys should be stored inside a single secret in Secrets Manager (the one created by ArtifactStack). You can then reference the individual keys from that secret under the `secrets` section as a list.
+>
+> Every time you push changes to the main branch, the GitHub Actions workflow will update the ECS service with the new task definition including the latest environment variables and secrets.
+>
+> DO NOT forget to include there database credentials, (username and password are already included in the secret).
 
 ```bash
 cdk deploy AppStack
@@ -160,3 +94,5 @@ CLOUDFRONT_DISTRIBUTION_ID=""
 ### 9. Finalize Deployment
 
 Once everything is configured correctly, your deployment should be ready to go.
+
+Configure the domain name to point to the CloudFront distribution.

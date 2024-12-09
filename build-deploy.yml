@@ -1,0 +1,154 @@
+name: Build and Push to AWS
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-skip-session-tagging: true
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Upload to S3
+        env:
+          BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+        run: |
+          aws s3 sync public/ s3://$BUCKET_NAME/ --delete
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-skip-session-tagging: true
+
+
+      - name: Debug Config File
+        run: |
+          cat cdk/config.json
+
+      - name: Read and Parse Config
+        id: read-config
+        env:
+          SECRET_MANAGER_ARN: ${{ secrets.SECRET_MANAGER_ARN }}
+        run: |
+          # Read the config file and prepare for jq processing
+          config=$(cat cdk/config.json)
+          
+          # Process config with jq to convert secret names to objects with valueFrom
+          processed_config=$(echo "$config" | jq --arg arn "$SECRET_MANAGER_ARN" '
+            .secrets = (.secrets | map({
+              name: ., 
+              valueFrom: $arn
+            }))
+          ')
+          
+          # Output the processed config, take care with multiline
+          echo 'config<<EOF' >> $GITHUB_OUTPUT
+          echo $processed_config >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
+
+      - name: Update ECS Task Definition
+        env:
+          ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
+          ECS_SERVICE: ${{ secrets.ECS_SERVICE }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          TASK_DEFINITION: ${{ secrets.TASK_DEFINITION }}
+          IMAGE_TAG: ${{ github.sha }}
+          CONFIG: ${{ steps.read-config.outputs.config }}
+        run: |
+          # Get the current task definition
+          task_definition=$(aws ecs describe-task-definition \
+            --task-definition $TASK_DEFINITION \
+            --query 'taskDefinition' \
+            --output json)
+
+            updated_task_def=$(echo "$task_definition" | jq --argjson config "$CONFIG" '
+            .containerDefinitions[0].environment = (
+              if ($config.environmentVariables == {} or $config.environmentVariables == null) then []
+              else
+                $config.environmentVariables | to_entries | map({name: .key, value: .value})
+              end
+            ) |
+            .containerDefinitions[0].secrets = (
+              if ($config.secrets == [] or $config.secrets == null) then []
+              else
+                $config.secrets | map({name: .name, valueFrom: .valueFrom})
+              end
+            ) |
+            # Remove tags if they are empty or null
+            (if (.tags == null or .tags == []) then del(.tags) else . end) |
+            del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+            ')
+
+
+          # Save the updated JSON into a file
+          echo "$updated_task_def" > updated-task-def.json
+
+          # Debug: Check the JSON file content
+          cat updated-task-def.json
+
+          # Register the new task definition
+          new_task_def=$(aws ecs register-task-definition \
+            --cli-input-json file://updated-task-def.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          # Update the service with the new task definition
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service $ECS_SERVICE \
+            --task-definition $new_task_def \
+            --force-new-deployment
+
+      - name: Purge CloudFront Cache
+        env:
+          DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id $DISTRIBUTION_ID \
+            --paths "/*"
