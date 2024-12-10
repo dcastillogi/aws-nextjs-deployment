@@ -112,24 +112,27 @@ jobs:
             --query 'taskDefinition' \
             --output json)
 
-            updated_task_def=$(echo "$task_definition" | jq --argjson config "$CONFIG" '
+          updated_task_def=$(echo "$task_definition" | jq --argjson config "$CONFIG" '
             .containerDefinitions[0].environment = (
               if ($config.environmentVariables == {} or $config.environmentVariables == null) then []
               else
-                $config.environmentVariables | to_entries | map({name: .key, value: .value})
+                $config.environmentVariables
+                | to_entries
+                | map({name: .key, value: .value})
               end
             ) |
             .containerDefinitions[0].secrets = (
               if ($config.secrets == [] or $config.secrets == null) then []
               else
-                $config.secrets | map({name: .name, valueFrom: .valueFrom})
+                $config.secrets
+                | map({name: .name, valueFrom: (.valueFrom + ":" + .name + "::")})
               end
             ) |
             # Remove tags if they are empty or null
             (if (.tags == null or .tags == []) then del(.tags) else . end) |
+            # Remove unnecessary fields
             del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
-            ')
-
+          ')
 
           # Save the updated JSON into a file
           echo "$updated_task_def" > updated-task-def.json
