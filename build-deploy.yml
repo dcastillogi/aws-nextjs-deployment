@@ -16,6 +16,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq
 
+      - name: Read and Parse Config
+        id: read-config
+        run: |
+          # Read the config file and prepare for jq processing
+          config=$(cat cdk/config.json)
+          
+          # Extract environment variables
+          env_vars=$(echo "$config" | jq -r '.environmentVariables | to_entries | map("\(.key)=\(.value)") | .[]')
+          
+          # Output environment variables
+          echo 'env_vars<<EOF' >> $GITHUB_OUTPUT
+          echo "$env_vars" >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -65,11 +79,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ secrets.AWS_REGION }}
           role-skip-session-tagging: true
-
-
-      - name: Debug Config File
-        run: |
-          cat cdk/config.json
 
       - name: Read and Parse Config
         id: read-config
@@ -128,9 +137,6 @@ jobs:
 
           # Save the updated JSON into a file
           echo "$updated_task_def" > updated-task-def.json
-
-          # Debug: Check the JSON file content
-          cat updated-task-def.json
 
           # Register the new task definition
           new_task_def=$(aws ecs register-task-definition \
