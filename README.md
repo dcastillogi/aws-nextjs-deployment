@@ -12,6 +12,14 @@ Simplify your deployment workflow and leverage the power of AWS and GitHub Actio
 
 ![Cloud Architecture](architecture.drawio.png)
 
+## Next.js project
+
+The deployment Docker image relies on the Next.js output configuration set to `standalone`. Make sure to configure it properly.
+
+For more details, refer to the [Next.js documentation on output configuration](https://nextjs.org/docs/pages/api-reference/next-config-js/output).
+
+Additionally, store all static assets in the `public/static/` directory, as this is the directory CloudFront will use to serve images.
+
 ## Deployment Guide
 
 Follow the steps below to deploy the application successfully:
@@ -19,10 +27,6 @@ Follow the steps below to deploy the application successfully:
 ### 1. Configure Dockerfile and .dockerignore
 
 Copy the `Dockerfile` and `.dockerignore` files to the root directory of your Next.js project. 
-
-This Docker image relies on the Next.js output configuration set to `standalone`. Make sure to configure it properly.  
-
-For more details, refer to the [Next.js documentation on output configuration](https://nextjs.org/docs/pages/api-reference/next-config-js/output).
 
 ### 2. Copy CDK
 

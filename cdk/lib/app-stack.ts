@@ -90,7 +90,7 @@ export class AppStack extends cdk.Stack {
                 serverlessV2MaxCapacity: 1,
                 vpc: vpc,
                 vpcSubnets: {
-                    subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+                    subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
                 },
                 writer: rds.ClusterInstance.serverlessV2("main"),
                 readers: [
@@ -374,7 +374,7 @@ export class AppStack extends cdk.Stack {
                     cachePolicy: albCachePolicy,
                 },
                 additionalBehaviors: {
-                    "images/*": {
+                    "static/*": {
                         origin: origins.S3BucketOrigin.withOriginAccessControl(
                             staticBucket
                         ),
