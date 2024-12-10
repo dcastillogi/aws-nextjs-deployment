@@ -7,7 +7,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json ./
-RUN npm update && npm install
+RUN npm install
 
 # Build the application
 FROM base AS builder
@@ -23,7 +23,7 @@ WORKDIR /app
 
 RUN apk add --no-cache curl
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
