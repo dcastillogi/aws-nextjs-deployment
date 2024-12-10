@@ -22,13 +22,8 @@ jobs:
           # Read the config file and prepare for jq processing
           config=$(cat cdk/config.json)
           
-          # Extract environment variables
-          env_vars=$(echo "$config" | jq -r '.environmentVariables | to_entries | map("\(.key)=\(.value)") | .[]')
-          
-          # Output environment variables
-          echo 'env_vars<<EOF' >> $GITHUB_OUTPUT
-          echo "$env_vars" >> $GITHUB_OUTPUT
-          echo 'EOF' >> $GITHUB_OUTPUT
+          # Create .env file
+          echo "$config" | jq -r '.environmentVariables | to_entries | map("\(.key)=\(.value)") | .[]' > .env
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -48,10 +43,9 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
           IMAGE_TAG: ${{ github.sha }}
-          env: ${{ steps.read-config.outputs.env_vars }}
 
         run: |
-          docker build $(printf "%s" "${{ steps.read-config.outputs.env_vars }}" | sed 's/^/--build-arg /g') -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
