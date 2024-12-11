@@ -1,4 +1,3 @@
-npm-debug.log
-documentation/
-public/
-cdk/
+public/static
+cdk
+node_modules

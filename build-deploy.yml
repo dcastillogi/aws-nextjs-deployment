@@ -53,7 +53,7 @@ jobs:
         env:
           BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
         run: |
-          aws s3 sync public/ s3://$BUCKET_NAME/ --delete
+          aws s3 sync public/static s3://$BUCKET_NAME/static --delete
 
   deploy:
     needs: build-and-push
