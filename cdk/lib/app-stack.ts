@@ -94,13 +94,9 @@ export class AppStack extends cdk.Stack {
                 },
                 writer: rds.ClusterInstance.serverlessV2("main"),
                 readers: [
-                    ...(process.env.AURORA_READER_REPLICA
-                        ? [
-                              rds.ClusterInstance.serverlessV2("replica", {
-                                  scaleWithWriter: true,
-                              }),
-                          ]
-                        : []),
+                    rds.ClusterInstance.serverlessV2("replica", {
+                        scaleWithWriter: true,
+                    }),
                 ],
                 removalPolicy: cdk.RemovalPolicy.RETAIN,
                 storageEncrypted: true,
@@ -268,7 +264,7 @@ export class AppStack extends cdk.Stack {
             {
                 cluster,
                 taskDefinition,
-                desiredCount: 1,
+                desiredCount: 2,
                 assignPublicIp: false,
                 circuitBreaker: { rollback: true },
                 securityGroups: [serviceSecurityGroup],

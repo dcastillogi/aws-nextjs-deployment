@@ -44,7 +44,6 @@ STATIC_BUCKET_NAME=""
 UPLOAD_BUCKET_NAME=""
 DOMAIN_NAME=""
 ECS_CLUSTER_NAME=""
-AURORA_READER_REPLICA=false # default
 GITHUB_ACTIONS_USER_NAME="github-actions-deployment-user"
 GITHUB_ACTIONS_ROLE_NAME="github-actions-deployment-role"
 SECRET_NAME=""
