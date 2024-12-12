@@ -1,5 +1,7 @@
 # Next.js GitHub Actions CD + AWS CDK Infrastructure
 
+> If you're looking for a solution with a lower TCO, please refer to the [low-cost](https://github.com/dcastillogi/aws-nextjs-deployment/tree/low-cost) branch.
+
 Are you looking to deploy your Next.js project on AWS with high availability? This repository has everything you need:  
 
 - **AWS CDK**: Automates infrastructure deployment, including:  
