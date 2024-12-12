@@ -10,7 +10,6 @@ import * as rds from "aws-cdk-lib/aws-rds";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as logs from "aws-cdk-lib/aws-logs";
-import * as wafv2 from "aws-cdk-lib/aws-wafv2";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 import { Duration } from "aws-cdk-lib";
@@ -43,7 +42,7 @@ export class AppStack extends cdk.Stack {
                 {
                     cidrMask: 24,
                     name: "private",
-                    subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+                    subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
                 },
             ],
         });
@@ -90,7 +89,7 @@ export class AppStack extends cdk.Stack {
                 serverlessV2MaxCapacity: 1,
                 vpc: vpc,
                 vpcSubnets: {
-                    subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+                    subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
                 },
                 writer: rds.ClusterInstance.serverlessV2("main"),
                 readers: [
@@ -264,11 +263,10 @@ export class AppStack extends cdk.Stack {
             {
                 cluster,
                 taskDefinition,
-                desiredCount: 2,
-                assignPublicIp: false,
+                desiredCount: 1,
+                assignPublicIp: true,
                 circuitBreaker: { rollback: true },
                 securityGroups: [serviceSecurityGroup],
-                vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
                 healthCheckGracePeriod: Duration.seconds(120),
             }
         );
@@ -304,57 +302,6 @@ export class AppStack extends cdk.Stack {
             }
         ); // To send the Host header to the origin for SSL certificate validation
 
-        // WAFv2 WebACL
-        const WebAcl = new wafv2.CfnWebACL(this, "AppWebACL", {
-            scope: "CLOUDFRONT",
-            defaultAction: {
-                allow: {},
-            },
-            visibilityConfig: {
-                cloudWatchMetricsEnabled: true,
-                metricName: "AppWebACL",
-                sampledRequestsEnabled: true,
-            },
-            rules: [
-                {
-                    name: "AllowAll",
-                    priority: 0,
-                    statement: {
-                        managedRuleGroupStatement: {
-                            vendorName: "AWS",
-                            name: "AWSManagedRulesCommonRuleSet",
-                        },
-                    },
-                    overrideAction: {
-                        none: {},
-                    },
-                    visibilityConfig: {
-                        sampledRequestsEnabled: true,
-                        cloudWatchMetricsEnabled: true,
-                        metricName: "AllowAll",
-                    },
-                },
-                {
-                    name: "IPRateLimitingRule",
-                    priority: 1,
-                    statement: {
-                        rateBasedStatement: {
-                            limit: 600,
-                            aggregateKeyType: "IP",
-                        },
-                    },
-                    action: {
-                        block: {},
-                    },
-                    visibilityConfig: {
-                        sampledRequestsEnabled: true,
-                        cloudWatchMetricsEnabled: true,
-                        metricName: "IPRateLimitingRule",
-                    },
-                },
-            ],
-        });
-
         // CloudFront Distribution
         const distribution = new cloudfront.Distribution(
             this,
@@ -388,8 +335,7 @@ export class AppStack extends cdk.Stack {
                 domainNames: [
                     process.env.DOMAIN_NAME!,
                     "www." + process.env.DOMAIN_NAME!,
-                ],
-                webAclId: WebAcl.attrArn,
+                ]
             }
         );
 

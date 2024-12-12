@@ -1,4 +1,6 @@
-Are you looking to deploy your Next.js project on AWS with high availability? This repository has everything you need:  
+# Next.js GitHub Actions CD + AWS CDK Infrastructure
+
+Looking to deploy your Next.js project on AWS with a lightweight, low-cost solution? This repository has everything you need:
 
 - **AWS CDK**: Automates infrastructure deployment, including:  
   - High-availability configuration for your Next.js deployment.  
@@ -113,3 +115,10 @@ CLOUDFRONT_DISTRIBUTION_ID=""
 Once everything is configured correctly, your deployment should be ready to go.
 
 Configure the domain name to point to the CloudFront distribution.
+
+If you want more savings, please go to the web console and modify Amazon RDS Aurora cluster configuration to:
+
+Serverless v2 capacity settings
+Minimum capacity: 0
+
+This will save you money when the application is not in use.
