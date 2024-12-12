@@ -268,7 +268,7 @@ export class AppStack extends cdk.Stack {
             {
                 cluster,
                 taskDefinition,
-                desiredCount: 1,
+                desiredCount: 2,
                 assignPublicIp: false,
                 circuitBreaker: { rollback: true },
                 securityGroups: [serviceSecurityGroup],
