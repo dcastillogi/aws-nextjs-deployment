@@ -94,12 +94,12 @@ export class AppStack extends cdk.Stack {
                 },
                 writer: rds.ClusterInstance.serverlessV2("main"),
                 readers: [
-                    ...(process.env.AURORA_READER_REPLICA
+                    ...(process.env.AURORA_READER_REPLICA !== 'false' 
                         ? [
-                              rds.ClusterInstance.serverlessV2("replica", {
-                                  scaleWithWriter: true,
-                              }),
-                          ]
+                            rds.ClusterInstance.serverlessV2("replica", {
+                                scaleWithWriter: true,
+                            }),
+                        ] 
                         : []),
                 ],
                 removalPolicy: cdk.RemovalPolicy.RETAIN,
