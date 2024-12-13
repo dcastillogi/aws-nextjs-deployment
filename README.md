@@ -73,7 +73,6 @@ AWS_REGION=""
 ECR_REPOSITORY=""
 S3_BUCKET_NAME=""
 SECRET_MANAGER_ARN=""
-TASK_DEFINITION=""
 ```
 
 ### 6. Configure GitHub Actions
@@ -108,6 +107,7 @@ Use the output values from the application stack to complete the GitHub secrets:
 ECS_CLUSTER=""
 ECS_SERVICE=""
 CLOUDFRONT_DISTRIBUTION_ID=""
+TASK_DEFINITION=""
 ```
 
 ### 9. Finalize Deployment
