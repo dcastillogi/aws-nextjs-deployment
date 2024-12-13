@@ -91,12 +91,6 @@ export class AppStack extends cdk.Stack {
                 vpcSubnets: {
                     subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
                 },
-                writer: rds.ClusterInstance.serverlessV2("main"),
-                readers: [
-                    rds.ClusterInstance.serverlessV2("replica", {
-                        scaleWithWriter: true,
-                    }),
-                ],
                 removalPolicy: cdk.RemovalPolicy.RETAIN,
                 storageEncrypted: true,
                 backup: {
