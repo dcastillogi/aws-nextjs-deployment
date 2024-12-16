@@ -292,22 +292,6 @@ export class AppStack extends cdk.Stack {
             },
         });
 
-        const albCachePolicy = new cloudfront.CachePolicy(
-            this,
-            "CustomCachePolicy",
-            {
-                cachePolicyName: "CustomALBCachePolicy",
-                comment: "Cache policy for ALB origin with Host header",
-                defaultTtl: Duration.days(0),
-                minTtl: Duration.seconds(0),
-                maxTtl: Duration.days(0),
-                headerBehavior:
-                    cloudfront.CacheHeaderBehavior.allowList("Host"),
-                enableAcceptEncodingGzip: true,
-                enableAcceptEncodingBrotli: true,
-            }
-        ); // To send the Host header to the origin for SSL certificate validation
-
         // WAFv2 WebACL
         const WebAcl = new wafv2.CfnWebACL(this, "AppWebACL", {
             scope: "CLOUDFRONT",
@@ -371,7 +355,7 @@ export class AppStack extends cdk.Stack {
                     }),
                     viewerProtocolPolicy:
                         cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                    cachePolicy: albCachePolicy,
+                    cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
                     allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
                     originRequestPolicy:
                         cloudfront.OriginRequestPolicy.ALL_VIEWER,
