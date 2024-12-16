@@ -287,9 +287,9 @@ export class AppStack extends cdk.Stack {
             {
                 cachePolicyName: "CustomALBCachePolicy",
                 comment: "Cache policy for ALB origin with Host header",
-                defaultTtl: Duration.days(1),
+                defaultTtl: Duration.days(0),
                 minTtl: Duration.seconds(0),
-                maxTtl: Duration.days(365),
+                maxTtl: Duration.days(0),
                 headerBehavior:
                     cloudfront.CacheHeaderBehavior.allowList("Host"),
                 enableAcceptEncodingGzip: true,
@@ -315,7 +315,7 @@ export class AppStack extends cdk.Stack {
                         cloudfront.OriginRequestPolicy.ALL_VIEWER,
                 },
                 additionalBehaviors: {
-                    "static/*": {
+                    "/static/*": {
                         origin: origins.S3BucketOrigin.withOriginAccessControl(
                             staticBucket
                         ),
